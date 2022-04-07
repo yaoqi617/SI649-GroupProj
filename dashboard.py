@@ -32,7 +32,7 @@ age_group = age_group.reset_index()
 
 st.title("Key Indicators of Heart Disease")
 
-intro_col1, intro_col2 = st.columns([1, 10])
+intro_col1, intro_col2 = st.columns([2, 8])
 
 
 with intro_col1:
@@ -49,9 +49,42 @@ with intro_col2:
     """)
 
 ####################
+##### Raw Data #####
+####################
+st.subheader("Currently selected data:")
+
+data_spacer1, data_1, data_spacer2, data_2, data_spacer3, data_3, data_spacer4, data_4, data_spacer5   = st.columns((.2, 1.6, .2, 1.6, .2, 1.6, .2, 1.6, .2))
+with data_1:
+    total_num_people = df.count()['HeartDisease']
+    str_games = "👥 " + str(total_num_people) + " Observations"
+    st.markdown(str_games)
+
+with data_2:
+    num_female = df[df['Sex']=='Female'].count()['Sex']
+    female_total = "👩 " + str(num_female) + "Female"
+    st.markdown(female_total)
+
+with data_3:
+    num_male = df[df['Sex']=='Male'].count()['Sex']
+    female_total = "👨 " + str(num_male) + "Male"
+    st.markdown(female_total)
+
+with data_4:
+    num_diseases = "🦠 " + "5 other diseases"
+    st.markdown(num_diseases)
+
+
+st.text('')
+see_data = st.expander('You can click here to see 100 data sample 👉')
+with see_data:
+    st.dataframe(data=df.head(100))
+st.text('')
+
+
+####################
 ###### Viz 1 #######
 ####################
-st.subheader('Distribution of heart disease by gender and race')
+st.subheader('Distribution of Heart Disease by Age, Gender and Race')
 
 age_sex_race = alt.Chart(age_group
             ).mark_bar(
@@ -64,9 +97,6 @@ age_sex_race = alt.Chart(age_group
             ).properties(
             width=350,
             height=400)
-
-race = list(age_group['Race'].unique())
-race.insert(0, 'Not Selected')
 
 native = alt.Chart(age_group
             ).transform_filter(alt.datum.Race=='American Indian/Alaskan Native').mark_bar(
@@ -140,10 +170,22 @@ white = alt.Chart(age_group
             width=350,
             height=400)
 
-viz1_col1, viz1_col2 = st.columns([3, 6])
+viz1_col1, viz1_col2 = st.columns([2, 6])
+
+race = list(age_group['Race'].unique())
+race.insert(0, 'Not Selected')
+
+# age = list(age_group['AgeCategory'].unique())
+# age.insert(0, 'Not Selected')
+
+# gender = list(age_group['Sex'].unique())
+# gender.insert(0, 'Not Selected')
 
 with viz1_col1:
-    race_selections = st.selectbox ("Race", race, key='attribute_team')
+    race_selections = st.selectbox ("Race", race)
+    # age_selections = st.selectbox("Age", age)
+    # gender_selections = st.selectbox("Gender", gender)
+
 with viz1_col2:
     if race_selections == race[0]:
         st.write(age_sex_race)
@@ -159,3 +201,279 @@ with viz1_col2:
         st.write(other)
     elif race_selections == race[6]:
         st.write(white)
+
+####################
+###### Viz 2 #######
+####################
+st.subheader('How Sleep and Weight Affect Heart Disease?')
+##### Data Processing #####
+multi_var = df[['HeartDisease', 'PhysicalHealth', 'MentalHealth', 'SleepTime', 'BMI', 'Sex']]
+def convert_to_bool(x):
+    if x == 0:
+        return 'No'
+    else:
+        return 'Yes'
+
+multi_var['HeartDisease'] = multi_var['HeartDisease'].apply(lambda x: convert_to_bool(x))
+selector = alt.selection_single(empty='all', fields=['HeartDisease'])
+color_scale = alt.Scale(domain=['Yes', 'No'], range=['#D81B60', '#1E88E5'])
+alt.data_transformers.disable_max_rows()
+
+##### General Plots #####
+base = alt.Chart(multi_var).properties(
+    width=250,
+    height=250
+).add_selection(selector)
+
+points = base.mark_point(filled=True, size=300).encode(
+    x=alt.X('mean(PhysicalHealth):Q',
+            title='Days in physical discomfort',
+            scale=alt.Scale(domain=[0,10])),
+    y=alt.Y('mean(MentalHealth):Q',
+            title='Days in mental discomfort',
+            scale=alt.Scale(domain=[0,10])),
+    color=alt.condition(selector,
+                        'HeartDisease:N',
+                        alt.value('lightgray'),
+                        scale=color_scale),
+)
+
+sleep_hists = base.mark_bar(opacity=0.5, thickness=100).encode(
+    x=alt.X('SleepTime',
+            bin=alt.Bin(step=2),
+            title='Sleep Hours',
+            scale=alt.Scale(domain=[0,24])),
+    y=alt.Y('count()',
+            stack=None),
+    color=alt.Color('HeartDisease:N',
+                    scale=color_scale)).transform_filter(selector)
+
+bmi_hists = base.mark_bar(opacity=0.5, thickness=100).encode(
+    x=alt.X('BMI',
+            title='BMI',
+            bin=alt.Bin(step=2)),
+    y=alt.Y('count()',
+            stack=None),
+    color=alt.Color('HeartDisease:N',
+                    scale=color_scale)).transform_filter(selector)
+
+bmi_thres = pd.DataFrame([{"bmi_thres": 25}])
+sleep_thres = pd.DataFrame([{"sleep_thres": 6}])
+
+bmi_rule = alt.Chart(bmi_thres).mark_rule().encode(
+    x='bmi_thres:Q'
+)
+
+sleep_rule = alt.Chart(sleep_thres).mark_rule().encode(
+    x='sleep_thres:Q'
+)
+
+##### Female Plot #####
+female_points = base.mark_point(filled=True, size=300
+                ).transform_filter(
+                alt.datum.Sex=='Female').encode(
+                x=alt.X('mean(PhysicalHealth):Q',
+                        scale=alt.Scale(domain=[0,10])),
+                y=alt.Y('mean(MentalHealth):Q',
+                        scale=alt.Scale(domain=[0,10])),
+                color=alt.condition(selector,
+                                    'HeartDisease:N',
+                                    alt.value('lightgray'),
+                                    scale=color_scale),
+            )
+
+female_sleep = base.mark_bar(opacity=0.5, thickness=100
+    ).transform_filter(
+    alt.datum.Sex=='Female').encode(
+    x=alt.X('SleepTime',
+            bin=alt.Bin(step=2),
+            scale=alt.Scale(domain=[0,24])),
+    y=alt.Y('count()',
+            stack=None),
+    color=alt.Color('HeartDisease:N',
+                    scale=color_scale)).transform_filter(selector)
+
+female_bmi = base.mark_bar(opacity=0.5, thickness=100
+    ).transform_filter(
+    alt.datum.Sex=='Female').encode(
+    x=alt.X('BMI',
+            bin=alt.Bin(step=2)),
+    y=alt.Y('count()',
+            stack=None),
+    color=alt.Color('HeartDisease:N',
+                    scale=color_scale)).transform_filter(selector)
+
+##### Male Plot #####
+male_points = base.mark_point(filled=True, size=300
+                ).transform_filter(
+                alt.datum.Sex=='Male').encode(
+                x=alt.X('mean(PhysicalHealth):Q',
+                        scale=alt.Scale(domain=[0,10])),
+                y=alt.Y('mean(MentalHealth):Q',
+                        scale=alt.Scale(domain=[0,10])),
+                color=alt.condition(selector,
+                                    'HeartDisease:N',
+                                    alt.value('lightgray'),
+                                    scale=color_scale),
+            )
+
+male_sleep = base.mark_bar(opacity=0.5, thickness=100
+    ).transform_filter(
+    alt.datum.Sex=='Male').encode(
+    x=alt.X('SleepTime',
+            bin=alt.Bin(step=2),
+            scale=alt.Scale(domain=[0,24])),
+    y=alt.Y('count()',
+            stack=None),
+    color=alt.Color('HeartDisease:N',
+                    scale=color_scale)).transform_filter(selector)
+
+male_bmi = base.mark_bar(opacity=0.5, thickness=100
+    ).transform_filter(
+    alt.datum.Sex=='Male').encode(
+    x=alt.X('BMI',
+            bin=alt.Bin(step=2)),
+    y=alt.Y('count()',
+            stack=None),
+    color=alt.Color('HeartDisease:N',
+                    scale=color_scale)).transform_filter(selector)
+
+
+viz2_col1, viz2_col2 = st.columns([2, 7])
+
+gender = list(multi_var['Sex'].unique())
+gender.insert(0, 'Not Selected')
+
+with viz2_col1:
+    sex_selections = st.selectbox("Gender", gender)
+
+with viz2_col2:
+    if sex_selections == gender[0]:
+        st.write(points | (sleep_hists + sleep_rule) | (bmi_hists + bmi_rule))
+    elif sex_selections == gender[1]:
+        st.write(female_points | (female_sleep + sleep_rule) | (female_bmi + bmi_rule))
+    elif sex_selections == gender[2]:
+        st.write(male_points | (male_sleep + sleep_rule) | (male_bmi + bmi_rule))
+
+####################
+###### Viz 3 #######
+####################
+st.subheader('How Are the Underlying Diseases Related to Heart Disease?')
+
+other_diseases = df[['HeartDisease', 'Stroke', 'Diabetic', 'Asthma', 'KidneyDisease', 'SkinCancer']]
+ls_diseases = ['Stroke', 'Diabetic', 'Asthma', 'KidneyDisease', 'SkinCancer']
+
+for dis in ls_diseases:
+    other_diseases[dis] = other_diseases[dis].apply(lambda x: convert_to_int(x))
+
+num_heart_disease = other_diseases['HeartDisease'].value_counts()
+other_diseases = other_diseases.groupby(['HeartDisease']).sum()
+other_diseases['Num_HeartDisease'] = num_heart_disease
+
+for dis in ls_diseases:
+    other_diseases[dis] = round(other_diseases[dis] / other_diseases['Num_HeartDisease'] * 100, 2)
+
+other_diseases = other_diseases.reset_index()
+other_diseases.drop(['Num_HeartDisease'], axis=1, inplace=True)
+other_diseases = other_diseases.set_index('HeartDisease', append=False).unstack('HeartDisease')
+other_diseases = pd.DataFrame(other_diseases)
+other_diseases = other_diseases.reset_index()
+other_diseases = other_diseases.rename(columns={'level_0': 'other_diseases', 0: 'percentage'})
+
+diseases = alt.Chart(other_diseases).mark_bar(
+    cornerRadiusTopLeft=3,
+    cornerRadiusTopRight=3
+    ).encode(
+    x='HeartDisease:N',
+    y='percentage:Q',
+    color='other_diseases',
+    ).properties(
+    width=550,
+    height=450)
+
+asthma = alt.Chart(other_diseases
+    ).transform_filter(
+    alt.datum.other_diseases=='Asthma').mark_bar(
+    cornerRadiusTopLeft=3,
+    cornerRadiusTopRight=3
+    ).encode(
+    x='HeartDisease:N',
+    y=alt.Y('percentage:Q', scale=alt.Scale(domain=(0,35))),
+    tooltip=['other_diseases:N', 'percentage:Q']
+    ).properties(
+    width=550,
+    height=450)
+
+diabetic = alt.Chart(other_diseases
+    ).transform_filter(
+    alt.datum.other_diseases=='Diabetic').mark_bar(
+    cornerRadiusTopLeft=3,
+    cornerRadiusTopRight=3
+    ).encode(
+    x='HeartDisease:N',
+    y=alt.Y('percentage:Q', scale=alt.Scale(domain=(0,35))),
+    tooltip=['other_diseases:N', 'percentage:Q']
+    ).properties(
+    width=550,
+    height=450)
+
+kidney_disease = alt.Chart(other_diseases
+    ).transform_filter(
+    alt.datum.other_diseases=='KidneyDisease').mark_bar(
+    cornerRadiusTopLeft=3,
+    cornerRadiusTopRight=3
+    ).encode(
+    x='HeartDisease:N',
+    y=alt.Y('percentage:Q', scale=alt.Scale(domain=(0,35))),
+    tooltip=['other_diseases:N', 'percentage:Q']
+    ).properties(
+    width=550,
+    height=450)
+
+skin_cancer = alt.Chart(other_diseases
+    ).transform_filter(
+    alt.datum.other_diseases=='SkinCancer').mark_bar(
+    cornerRadiusTopLeft=3,
+    cornerRadiusTopRight=3,
+    ).encode(
+    x='HeartDisease:N',
+    y=alt.Y('percentage:Q', scale=alt.Scale(domain=(0,35))),
+    tooltip=['other_diseases:N', 'percentage:Q']
+    ).properties(
+    width=550,
+    height=450)
+
+stroke = alt.Chart(other_diseases
+    ).transform_filter(
+    alt.datum.other_diseases=='Stroke').mark_bar(
+    cornerRadiusTopLeft=3,
+    cornerRadiusTopRight=3,
+    ).encode(
+    x='HeartDisease:N',
+    y=alt.Y('percentage:Q', scale=alt.Scale(domain=(0,35))),
+    tooltip=['other_diseases:N', 'percentage:Q']
+    ).properties(
+    width=550,
+    height=450)
+
+viz3_col1, viz3_col2 = st.columns([3, 6])
+
+underlying = list(other_diseases['other_diseases'].unique())
+underlying.insert(0, 'Not Selected')
+
+with viz3_col1:
+    dis_selections = st.selectbox("Underlying Diseases", underlying)
+
+with viz3_col2:
+    if dis_selections == underlying[0]:
+        st.write(diseases)
+    elif dis_selections == underlying[1]:
+        st.write(stroke)
+    elif dis_selections == underlying[2]:
+        st.write(diabetic)
+    elif dis_selections == underlying[3]:
+        st.write(asthma)
+    elif dis_selections == underlying[4]:
+        st.write(kidney_disease)
+    elif dis_selections == underlying[5]:
+        st.write(skin_cancer)
