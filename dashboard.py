@@ -15,6 +15,12 @@ def convert_to_int(x):
     else:
         return 0
 
+def convert_to_bool(x):
+    if x == 0:
+        return 'No'
+    else:
+        return 'Yes'
+
 df['HeartDisease'] = df['HeartDisease'].apply(lambda x: convert_to_int(x))
 table_1 = df[['AgeCategory', 'Sex', 'Race', 'HeartDisease']].groupby(
     ['AgeCategory', 'Sex', 'Race']).count()
@@ -208,11 +214,6 @@ with viz1_col2:
 st.subheader('How Sleep and Weight Affect Heart Disease?')
 ##### Data Processing #####
 multi_var = df[['HeartDisease', 'PhysicalHealth', 'MentalHealth', 'SleepTime', 'BMI', 'Sex']]
-def convert_to_bool(x):
-    if x == 0:
-        return 'No'
-    else:
-        return 'Yes'
 
 multi_var['HeartDisease'] = multi_var['HeartDisease'].apply(lambda x: convert_to_bool(x))
 selector = alt.selection_single(empty='all', fields=['HeartDisease'])
@@ -220,45 +221,68 @@ color_scale = alt.Scale(domain=['Yes', 'No'], range=['#D81B60', '#1E88E5'])
 alt.data_transformers.disable_max_rows()
 
 ##### General Plots #####
-base = alt.Chart(multi_var).properties(
-    width=250,
+base = alt.Chart(multi_var
+    ).properties(
+    width=300,
     height=250
-).add_selection(selector)
+    ).add_selection(selector)
 
-points = base.mark_point(filled=True, size=300).encode(
+points = base.mark_point(filled=True, size=300
+    ).encode(
     x=alt.X('mean(PhysicalHealth):Q',
-            title='Days in physical discomfort',
+            title='Avg Days/Month in Physical Discomfort',
             scale=alt.Scale(domain=[0,10])),
     y=alt.Y('mean(MentalHealth):Q',
-            title='Days in mental discomfort',
+            title='Avg Days/Month in Mental Discomfort',
             scale=alt.Scale(domain=[0,10])),
     color=alt.condition(selector,
                         'HeartDisease:N',
                         alt.value('lightgray'),
-                        scale=color_scale),
-)
+                        scale=color_scale)
+    )
 
-sleep_hists = base.mark_bar(opacity=0.5, thickness=100).encode(
+sleep_hists = base.transform_joinaggregate(
+    groupby=['HeartDisease'],
+    total='count(HeartDisease)'
+    ).transform_calculate(
+    pct='1 / datum.total'
+    ).mark_bar(opacity=0.5, thickness=100
+    ).encode(
     x=alt.X('SleepTime',
-            bin=alt.Bin(step=2),
             title='Sleep Hours',
+            bin=alt.Bin(step=2),
             scale=alt.Scale(domain=[0,24])),
-    y=alt.Y('count()',
+    y=alt.Y('sum(pct):Q',
+            axis=alt.Axis(format='%'),
+            title=None,
             stack=None),
     color=alt.Color('HeartDisease:N',
-                    scale=color_scale)).transform_filter(selector)
+                    scale=color_scale),
+    tooltip=[alt.Tooltip('sum(pct):Q', format='.2%')]
+    ).transform_filter(selector)
 
-bmi_hists = base.mark_bar(opacity=0.5, thickness=100).encode(
+bmi_hists = base.transform_joinaggregate(
+    groupby=['HeartDisease'],
+    total='count(HeartDisease)'
+    ).transform_calculate(
+    pct='1 / datum.total'
+    ).mark_bar(opacity=0.5, thickness=100
+    ).encode(
     x=alt.X('BMI',
             title='BMI',
-            bin=alt.Bin(step=2)),
-    y=alt.Y('count()',
+            bin=alt.Bin(step=2),
+            ),
+    y=alt.Y('sum(pct):Q',
+            title=None,
+            axis=alt.Axis(format='%'),
             stack=None),
     color=alt.Color('HeartDisease:N',
-                    scale=color_scale)).transform_filter(selector)
+                    scale=color_scale),
+    tooltip=[alt.Tooltip('sum(pct):Q', format='.2%')]
+    ).transform_filter(selector)
 
-bmi_thres = pd.DataFrame([{"bmi_thres": 25}])
-sleep_thres = pd.DataFrame([{"sleep_thres": 6}])
+bmi_thres = pd.DataFrame([{"bmi_thres": 25}]) #Standard BMI
+sleep_thres = pd.DataFrame([{"sleep_thres": 6}]) #Normal Sleep Hours
 
 bmi_rule = alt.Chart(bmi_thres).mark_rule().encode(
     x='bmi_thres:Q'
@@ -268,78 +292,160 @@ sleep_rule = alt.Chart(sleep_thres).mark_rule().encode(
     x='sleep_thres:Q'
 )
 
-##### Female Plot #####
-female_points = base.mark_point(filled=True, size=300
-                ).transform_filter(
-                alt.datum.Sex=='Female').encode(
-                x=alt.X('mean(PhysicalHealth):Q',
-                        scale=alt.Scale(domain=[0,10])),
-                y=alt.Y('mean(MentalHealth):Q',
-                        scale=alt.Scale(domain=[0,10])),
-                color=alt.condition(selector,
-                                    'HeartDisease:N',
-                                    alt.value('lightgray'),
-                                    scale=color_scale),
-            )
+combined_1 = (points | (sleep_hists + sleep_rule) | (bmi_hists + bmi_rule)
+    ).configure_view(strokeWidth=0
+    ).configure_axis(
+    labelFontSize=10,
+    titleFontSize=12
+    ).configure_legend(
+    titleFontSize=13,
+    labelFontSize=13)
 
-female_sleep = base.mark_bar(opacity=0.5, thickness=100
+##### Female Plot #####
+female_points = base.mark_point(
+    filled=True, size=300
     ).transform_filter(
-    alt.datum.Sex=='Female').encode(
+    alt.datum.Sex=='Female'
+    ).encode(
+    x=alt.X('mean(PhysicalHealth):Q',
+            title='Avg Days/Month in Physical Discomfort',
+            scale=alt.Scale(domain=[0,10])),
+    y=alt.Y('mean(MentalHealth):Q',
+            title='Avg Days/Month in Mental Discomfort',
+            scale=alt.Scale(domain=[0,10])),
+    color=alt.condition(selector,
+                        'HeartDisease:N',
+                        alt.value('lightgray'),
+                        scale=color_scale)
+    )
+
+female_sleep = base.mark_bar(
+    opacity=0.5, thickness=100
+    ).transform_filter(
+    alt.datum.Sex=='Female'
+    ).transform_joinaggregate(
+    groupby=['HeartDisease'],
+    total='count(HeartDisease)'
+    ).transform_calculate(
+    pct='1 / datum.total'
+    ).encode(
     x=alt.X('SleepTime',
+            title='Sleep Hours',
             bin=alt.Bin(step=2),
             scale=alt.Scale(domain=[0,24])),
-    y=alt.Y('count()',
+    y=alt.Y('sum(pct):Q',
+            axis=alt.Axis(format='%'),
+            title=None,
             stack=None),
     color=alt.Color('HeartDisease:N',
-                    scale=color_scale)).transform_filter(selector)
+                    scale=color_scale),
+    tooltip=[alt.Tooltip('sum(pct):Q', format='.2%')]
+    ).transform_filter(selector)
 
-female_bmi = base.mark_bar(opacity=0.5, thickness=100
+female_bmi = base.mark_bar(
+    opacity=0.5, thickness=100
     ).transform_filter(
-    alt.datum.Sex=='Female').encode(
+    alt.datum.Sex=='Female'
+    ).transform_joinaggregate(
+    groupby=['HeartDisease'],
+    total='count(HeartDisease)'
+    ).transform_calculate(
+    pct='1 / datum.total'
+    ).encode(
     x=alt.X('BMI',
+            title='BMI',
             bin=alt.Bin(step=2)),
-    y=alt.Y('count()',
+    y=alt.Y('sum(pct):Q',
+            title=None,
+            axis=alt.Axis(format='%'),
             stack=None),
     color=alt.Color('HeartDisease:N',
-                    scale=color_scale)).transform_filter(selector)
+                    scale=color_scale),
+    tooltip=[alt.Tooltip('sum(pct):Q', format='.2%')]
+    ).transform_filter(selector)
+
+combined_2 = (female_points | (female_sleep + sleep_rule) | (female_bmi + bmi_rule)
+    ).configure_view(strokeWidth=0
+    ).configure_axis(
+    labelFontSize=10,
+    titleFontSize=12
+    ).configure_legend(
+    titleFontSize=13,
+    labelFontSize=13)
 
 ##### Male Plot #####
-male_points = base.mark_point(filled=True, size=300
-                ).transform_filter(
-                alt.datum.Sex=='Male').encode(
-                x=alt.X('mean(PhysicalHealth):Q',
-                        scale=alt.Scale(domain=[0,10])),
-                y=alt.Y('mean(MentalHealth):Q',
-                        scale=alt.Scale(domain=[0,10])),
-                color=alt.condition(selector,
-                                    'HeartDisease:N',
-                                    alt.value('lightgray'),
-                                    scale=color_scale),
+male_points = base.mark_point(
+    filled=True, size=300
+    ).transform_filter(
+    alt.datum.Sex=='Male').encode(
+    x=alt.X('mean(PhysicalHealth):Q',
+            title='Avg Days/Month in Physical Discomfort',
+            scale=alt.Scale(domain=[0,10])),
+    y=alt.Y('mean(MentalHealth):Q',
+            title='Avg Days/Month in Mental Discomfort',
+            scale=alt.Scale(domain=[0,10])),
+            color=alt.condition(selector,
+                                'HeartDisease:N',
+                                alt.value('lightgray'),
+                                scale=color_scale)
             )
 
-male_sleep = base.mark_bar(opacity=0.5, thickness=100
+male_sleep = base.mark_bar(
+    opacity=0.5, thickness=100
     ).transform_filter(
-    alt.datum.Sex=='Male').encode(
+    alt.datum.Sex=='Male'
+    ).transform_joinaggregate(
+    groupby=['HeartDisease'],
+    total='count(HeartDisease)'
+    ).transform_calculate(
+    pct='1 / datum.total'
+    ).encode(
     x=alt.X('SleepTime',
+            title='Sleep Hours',
             bin=alt.Bin(step=2),
             scale=alt.Scale(domain=[0,24])),
-    y=alt.Y('count()',
+    y=alt.Y('sum(pct):Q',
+            axis=alt.Axis(format='%'),
+            title=None,
             stack=None),
     color=alt.Color('HeartDisease:N',
-                    scale=color_scale)).transform_filter(selector)
+                    scale=color_scale),
+    tooltip=[alt.Tooltip('sum(pct):Q', format='.2%')]
+    ).transform_filter(selector)
 
-male_bmi = base.mark_bar(opacity=0.5, thickness=100
+male_bmi = base.mark_bar(
+    opacity=0.5, thickness=100
     ).transform_filter(
-    alt.datum.Sex=='Male').encode(
+    alt.datum.Sex=='Male'
+    ).transform_joinaggregate(
+    groupby=['HeartDisease'],
+    total='count(HeartDisease)'
+    ).transform_calculate(
+    pct='1 / datum.total'
+    ).encode(
     x=alt.X('BMI',
-            bin=alt.Bin(step=2)),
-    y=alt.Y('count()',
+            title='BMI',
+            bin=alt.Bin(step=5)),
+    y=alt.Y('sum(pct):Q',
+            title=None,
+            axis=alt.Axis(format='%'),
             stack=None),
     color=alt.Color('HeartDisease:N',
-                    scale=color_scale)).transform_filter(selector)
+                    scale=color_scale),
+    tooltip=[alt.Tooltip('sum(pct):Q', format='.2%')]
+    ).transform_filter(selector)
 
+combined_3 = (male_points | (male_sleep + sleep_rule) | (male_bmi + bmi_rule)
+    ).configure_view(strokeWidth=0
+    ).configure_axis(
+    labelFontSize=10,
+    titleFontSize=12
+    ).configure_legend(
+    titleFontSize=13,
+    labelFontSize=13)
 
-viz2_col1, viz2_col2 = st.columns([2, 7])
+##### Implement Viz 2 in Streamlit #####
+viz2_col1, viz2_col2 = st.columns([1, 7])
 
 gender = list(multi_var['Sex'].unique())
 gender.insert(0, 'Not Selected')
@@ -349,11 +455,11 @@ with viz2_col1:
 
 with viz2_col2:
     if sex_selections == gender[0]:
-        st.write(points | (sleep_hists + sleep_rule) | (bmi_hists + bmi_rule))
+        st.write(combined_1)
     elif sex_selections == gender[1]:
-        st.write(female_points | (female_sleep + sleep_rule) | (female_bmi + bmi_rule))
+        st.write(combined_2)
     elif sex_selections == gender[2]:
-        st.write(male_points | (male_sleep + sleep_rule) | (male_bmi + bmi_rule))
+        st.write(combined_3)
 
 ####################
 ###### Viz 3 #######
@@ -371,7 +477,7 @@ other_diseases = other_diseases.groupby(['HeartDisease']).sum()
 other_diseases['Num_HeartDisease'] = num_heart_disease
 
 for dis in ls_diseases:
-    other_diseases[dis] = round(other_diseases[dis] / other_diseases['Num_HeartDisease'] * 100, 2)
+    other_diseases[dis] = other_diseases[dis] / other_diseases['Num_HeartDisease']
 
 other_diseases = other_diseases.reset_index()
 other_diseases.drop(['Num_HeartDisease'], axis=1, inplace=True)
@@ -379,69 +485,166 @@ other_diseases = other_diseases.set_index('HeartDisease', append=False).unstack(
 other_diseases = pd.DataFrame(other_diseases)
 other_diseases = other_diseases.reset_index()
 other_diseases = other_diseases.rename(columns={'level_0': 'other_diseases', 0: 'percentage'})
+other_diseases['HeartDisease'] = other_diseases['HeartDisease'].apply(lambda x: convert_to_bool(x))
 
 diseases = alt.Chart(other_diseases).mark_bar(
     cornerRadiusTopLeft=3,
     cornerRadiusTopRight=3
     ).encode(
-    x='HeartDisease:N',
-    y='percentage:Q',
+    x=alt.X('HeartDisease:N', axis=alt.Axis(grid=False)),
+    y=alt.Y('percentage:Q',
+            axis=alt.Axis(format='%', grid=False)
+           ),
     color='other_diseases',
+    tooltip=['other_diseases:N', alt.Tooltip('percentage:Q', format='.2%')]
     ).properties(
-    width=550,
-    height=450)
+    width=450,
+    height=500
+    ).configure_view(strokeWidth=0
+    ).configure_axis(
+    labelFontSize=14,
+    titleFontSize=16
+    ).configure_legend(
+    titleFontSize=13,
+    labelFontSize=13)
 
+##### ASTHMA #####
 asthma = alt.Chart(other_diseases
     ).transform_filter(
     alt.datum.other_diseases=='Asthma').mark_bar(
     cornerRadiusTopLeft=3,
     cornerRadiusTopRight=3
     ).encode(
-    x='HeartDisease:N',
-    y=alt.Y('percentage:Q', scale=alt.Scale(domain=(0,35))),
-    tooltip=['other_diseases:N', 'percentage:Q']
+    x=alt.X('HeartDisease:N', axis=alt.Axis(grid=False)),
+    y=alt.Y('percentage:Q',
+            axis=None,
+            scale=alt.Scale(domain=(0,0.35))),
+    tooltip=['other_diseases:N', alt.Tooltip('percentage:Q', format='.2%')]
     ).properties(
-    width=550,
-    height=450)
+    width=450,
+    height=500)
+asthma_annot = alt.Chart(other_diseases
+    ).transform_filter(
+    alt.datum.other_diseases=='Asthma'
+    ).mark_text(
+    baseline='middle',
+    dx=2,
+    dy=-8,
+    fontSize=14
+    ).encode(
+    x=alt.X('HeartDisease:N', axis=alt.Axis(grid=False)),
+    y=alt.Y('percentage:Q', axis=None),
+    text=alt.Text('percentage:Q',format='.2%'))
+asthma_viz = (asthma+asthma_annot).configure_view(
+    strokeWidth=0
+    ).configure_axis(
+    labelFontSize=14,
+    titleFontSize=16
+    )
 
+##### DIABETIC #####
 diabetic = alt.Chart(other_diseases
     ).transform_filter(
     alt.datum.other_diseases=='Diabetic').mark_bar(
     cornerRadiusTopLeft=3,
     cornerRadiusTopRight=3
     ).encode(
-    x='HeartDisease:N',
-    y=alt.Y('percentage:Q', scale=alt.Scale(domain=(0,35))),
-    tooltip=['other_diseases:N', 'percentage:Q']
+    x=alt.X('HeartDisease:N', axis=alt.Axis(grid=False)),
+    y=alt.Y('percentage:Q',
+            axis=None,
+            scale=alt.Scale(domain=(0,0.35))),
+    tooltip=['other_diseases:N', alt.Tooltip('percentage:Q', format='.2%')]
     ).properties(
-    width=550,
-    height=450)
+    width=450,
+    height=500)
+diabetic_annot = alt.Chart(other_diseases
+    ).transform_filter(
+    alt.datum.other_diseases=='Diabetic'
+    ).mark_text(
+    baseline='middle',
+    dx=2,
+    dy=-8,
+    fontSize=14
+    ).encode(
+    x=alt.X('HeartDisease:N', axis=alt.Axis(grid=False)),
+    y=alt.Y('percentage:Q', axis=None),
+    text=alt.Text('percentage:Q',format='.2%'))
+diabetic_viz = (diabetic+diabetic_annot).configure_view(
+    strokeWidth=0
+    ).configure_axis(
+    labelFontSize=14,
+    titleFontSize=16
+    )
 
+##### KIDNEY #####
 kidney_disease = alt.Chart(other_diseases
     ).transform_filter(
     alt.datum.other_diseases=='KidneyDisease').mark_bar(
     cornerRadiusTopLeft=3,
     cornerRadiusTopRight=3
     ).encode(
-    x='HeartDisease:N',
-    y=alt.Y('percentage:Q', scale=alt.Scale(domain=(0,35))),
-    tooltip=['other_diseases:N', 'percentage:Q']
+    x=alt.X('HeartDisease:N', axis=alt.Axis(grid=False)),
+    y=alt.Y('percentage:Q',
+            axis=None,
+            scale=alt.Scale(domain=(0,0.35))),
+    tooltip=['other_diseases:N', alt.Tooltip('percentage:Q', format='.2%')]
     ).properties(
-    width=550,
-    height=450)
+    width=450,
+    height=500)
+kidney_annot = alt.Chart(other_diseases
+    ).transform_filter(
+    alt.datum.other_diseases=='KidneyDisease'
+    ).mark_text(
+    baseline='middle',
+    dx=2,
+    dy=-8,
+    fontSize=14
+    ).encode(
+    x=alt.X('HeartDisease:N', axis=alt.Axis(grid=False)),
+    y=alt.Y('percentage:Q', axis=None),
+    text=alt.Text('percentage:Q',format='.2%'))
+kidney_viz = (kidney_disease+kidney_annot).configure_view(
+    strokeWidth=0
+    ).configure_axis(
+    labelFontSize=14,
+    titleFontSize=16
+    )
 
+##### SKIN CANCER #####
 skin_cancer = alt.Chart(other_diseases
     ).transform_filter(
     alt.datum.other_diseases=='SkinCancer').mark_bar(
     cornerRadiusTopLeft=3,
     cornerRadiusTopRight=3,
     ).encode(
-    x='HeartDisease:N',
-    y=alt.Y('percentage:Q', scale=alt.Scale(domain=(0,35))),
-    tooltip=['other_diseases:N', 'percentage:Q']
+    x=alt.X('HeartDisease:N', axis=alt.Axis(grid=False)),
+    y=alt.Y('percentage:Q',
+            axis=None,
+            scale=alt.Scale(domain=(0,0.35))),
+    tooltip=['other_diseases:N', alt.Tooltip('percentage:Q', format='.2%')]
     ).properties(
-    width=550,
-    height=450)
+    width=450,
+    height=500)
+skin_annot = alt.Chart(other_diseases
+    ).transform_filter(
+    alt.datum.other_diseases=='SkinCancer'
+    ).mark_text(
+    baseline='middle',
+    dx=2,
+    dy=-8,
+    fontSize=14
+    ).encode(
+    x=alt.X('HeartDisease:N', axis=alt.Axis(grid=False)),
+    y=alt.Y('percentage:Q', axis=None),
+    text=alt.Text('percentage:Q',format='.2%'))
+skin_viz = (skin_cancer+skin_annot).configure_view(
+    strokeWidth=0
+    ).configure_axis(
+    labelFontSize=14,
+    titleFontSize=16
+    )
+
+##### STROKE #####
 
 stroke = alt.Chart(other_diseases
     ).transform_filter(
@@ -449,13 +652,34 @@ stroke = alt.Chart(other_diseases
     cornerRadiusTopLeft=3,
     cornerRadiusTopRight=3,
     ).encode(
-    x='HeartDisease:N',
-    y=alt.Y('percentage:Q', scale=alt.Scale(domain=(0,35))),
-    tooltip=['other_diseases:N', 'percentage:Q']
+    x=alt.X('HeartDisease:N', axis=alt.Axis(grid=False)),
+    y=alt.Y('percentage:Q',
+            axis=None,
+            scale=alt.Scale(domain=(0,0.35))),
+    tooltip=['other_diseases:N', alt.Tooltip('percentage:Q', format='.2%')]
     ).properties(
-    width=550,
-    height=450)
+    width=450,
+    height=500)
+stroke_annot = alt.Chart(other_diseases
+    ).transform_filter(
+    alt.datum.other_diseases=='Stroke'
+    ).mark_text(
+    baseline='middle',
+    dx=2,
+    dy=-8,
+    fontSize=14
+    ).encode(
+    x=alt.X('HeartDisease:N', axis=alt.Axis(grid=False)),
+    y=alt.Y('percentage:Q', axis=None),
+    text=alt.Text('percentage:Q',format='.2%'))
+stroke_viz = (stroke+stroke_annot).configure_view(
+    strokeWidth=0
+    ).configure_axis(
+    labelFontSize=14,
+    titleFontSize=16
+    )
 
+##### Implement Viz 3 in Streamlit #####
 viz3_col1, viz3_col2 = st.columns([3, 6])
 
 underlying = list(other_diseases['other_diseases'].unique())
@@ -468,12 +692,45 @@ with viz3_col2:
     if dis_selections == underlying[0]:
         st.write(diseases)
     elif dis_selections == underlying[1]:
-        st.write(stroke)
+        stroke_desc = """
+                    <p style="font-size: 18px;">
+                    Among patients with heart disease, 16.03% also suffer from stroke.</p>
+                    <p style="font-size: 18px;">
+                    Compared to people without heart disease,
+                    patients with heart disease had about 6.1 times more strokes.</p>"""
+        st.markdown(stroke_desc, unsafe_allow_html=True)
+        st.write(stroke_viz)
     elif dis_selections == underlying[2]:
-        st.write(diabetic)
+        diabete_desc = """
+                    <p style="font-size: 18px;">
+                    Among patients with heart disease, 32.72% also suffer from diabetes.</p>
+                    <p style="font-size: 18px;">
+                    Compared to people without heart disease,
+                    patients with heart disease had about 3 times more diabetes.</p>"""
+        st.markdown(diabete_desc, unsafe_allow_html=True)
+        st.write(diabetic_viz)
     elif dis_selections == underlying[3]:
-        st.write(asthma)
+        asthma_desc = """
+                    <p style="font-size: 18px;">
+                    Among patients with heart disease, 18.02% also suffer from asthma.</p>
+                    <p style="font-size: 18px;">
+                    Compared to people without heart disease,
+                    patients with heart disease had about 1.4 times more asthma.</p>"""
+        st.markdown(asthma_desc, unsafe_allow_html=True)
+        st.write(asthma_viz)
     elif dis_selections == underlying[4]:
-        st.write(kidney_disease)
+        kidney_desc = """<p style="font-size: 18px;">
+                    Among patients with heart disease, 12.62% also suffer from kidney disease.</p>
+                    <p style="font-size: 18px;">
+                    Compared to people without heart disease,
+                    patients with heart disease had about 4.4 times more kidney disease.</p>"""
+        st.markdown(kidney_desc, unsafe_allow_html=True)
+        st.write(kidney_viz)
     elif dis_selections == underlying[5]:
-        st.write(skin_cancer)
+        kidney_desc = """<p style="font-size: 18px;">
+                    Among patients with heart disease, 18.19% also suffer from skin cancer.</p>
+                    <p style="font-size: 18px;">
+                    Compared to people without heart disease,
+                    patients with heart disease had about 2.1 times more skin cancer.</p>"""
+        st.markdown(kidney_desc, unsafe_allow_html=True)
+        st.write(skin_viz)
