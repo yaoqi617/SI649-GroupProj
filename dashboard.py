@@ -831,10 +831,10 @@ if submit:
     prediction = logmodel.predict(trans_input_df)
     prediction_prob = logmodel.predict_proba(trans_input_df)
     if prediction == 0:
-        st.markdown(st.info(f"""**The probability that you'll have heart disease is 
-        {round(prediction_prob[0][1] * 100, 2)}%. You are healthy!**"""))
+        st.info(f"""**The probability that you'll have heart disease is 
+        {round(prediction_prob[0][1] * 100, 2)}%. You are healthy!**""")
     else:
-        st.markdown(st.info(f"""**The probability that you will have heart disease is 
-        {round(prediction_prob[0][1] * 100, 2)}%. It sounds like you are not healthy.**"""))
+        st.info(f"""**The probability that you will have heart disease is 
+        {round(prediction_prob[0][1] * 100, 2)}%. It sounds like you are not healthy.**""")
 
 # pred_col1, viz3_col2 = st.columns([3, 6])
