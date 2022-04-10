@@ -847,44 +847,23 @@ preprocess_pipeline = ColumnTransformer([
         ("cat", categorical_pip, categorical_attr)
     ])
 
-def logit_model():
-    # X_train, x_test, y_train, y_test = train_test_split(df.drop('HeartDisease',axis=1),
-    #                                                     df['HeartDisease'], test_size=0.30,
-    #                                                     random_state=101)
+X = preprocess_pipeline.fit_transform(
+    X_train[num_attr + categorical_attr])
 
-    # num_pip = Pipeline([
-    #         ("scaler", StandardScaler())
-    #     ])
-    # categorical_pip = Pipeline([("cat_encoder", OneHotEncoder(sparse=False))])
-    # categorical_attr = ["Smoking", "AlcoholDrinking", "Stroke", "DiffWalking", 
-    #             "Sex", "AgeCategory", "Race", "Diabetic", "PhysicalActivity", 
-    #             "GenHealth", "Asthma", "KidneyDisease", "SkinCancer"]
-    # num_attr = ["BMI", "PhysicalHealth", "MentalHealth", "SleepTime"]
+y = y_train
 
-    # preprocess_pipeline = ColumnTransformer([
-    #         ("num", num_pip, num_attr),
-    #         ("cat", categorical_pip, categorical_attr)
-    #     ])
-
-    X = preprocess_pipeline.fit_transform(
-        X_train[num_attr + categorical_attr])
-
-    y = y_train
-
-    oversample = SMOTE()
-    X_oversample, y_oversample = oversample.fit_resample(X, y)
-    logmodel = LogisticRegression()
-    logmodel.fit(X_oversample, y_oversample)
+oversample = SMOTE()
+X_oversample, y_oversample = oversample.fit_resample(X, y)
+logmodel = LogisticRegression()
+logmodel.fit(X_oversample, y_oversample)
 
 if submit:
     trans_input_df = preprocess_pipeline.transform(input_df)
-    prediction = logit_model().predict(trans_input_df)
-    prediction_prob = logit_model().predict_proba(trans_input_df)
+    prediction = logmodel().predict(trans_input_df)
+    prediction_prob = logmodel().predict_proba(trans_input_df)
     if prediction == 0:
         st.info(f"""**The probability that you'll have heart disease is 
         {round(prediction_prob[0][1] * 100, 2)}%. You are healthy!**""")
     else:
         st.info(f"""**The probability that you will have heart disease is 
         {round(prediction_prob[0][1] * 100, 2)}%. It sounds like you are not healthy.**""")
-
-# pred_col1, viz3_col2 = st.columns([3, 6])
