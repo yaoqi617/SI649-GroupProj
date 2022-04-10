@@ -761,10 +761,10 @@ def user_select_features():
     skin_canc = st.sidebar.selectbox("Do you have skin cancer?", options=("No", "Yes"))
 
     features = pd.DataFrame({
+                "BMI": [bmi_cat],
                 "PhysicalHealth": [phys_health],
                 "MentalHealth": [ment_health],
                 "SleepTime": [sleep_time],
-                "BMI": [bmi_cat],
                 "Smoking": [smoking],
                 "AlcoholDrinking": [alcohol_drink],
                 "Stroke": [stroke],
@@ -827,9 +827,9 @@ logmodel = LogisticRegression()
 logmodel.fit(X_oversample, y_oversample)
 
 if submit:
-    trans_input_df = preprocess_pipeline.transform(input_df[num_attr + categorical_attr])
+    trans_input_df = preprocess_pipeline.transform(input_df)
     prediction = logmodel.predict(trans_input_df)
-    prediction_prob = logmodel.predict_proba(trans_input_df[num_attr + categorical_attr])
+    prediction_prob = logmodel.predict_proba(trans_input_df)
     if prediction == 0:
         st.markdown(f"**The probability that you'll have"
                     f" heart disease is {round(prediction_prob[0][1] * 100, 2)}%."
