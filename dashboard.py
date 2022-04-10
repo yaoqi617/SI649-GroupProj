@@ -9,34 +9,29 @@ st.set_page_config(layout="wide")
 ####################
 df = pd.read_csv("heart_2020_cleaned.csv")
 
-@st.cache
 def convert_to_int(x):
     if x == 'Yes':
         return 1
     else:
         return 0
 
-@st.cache
 def convert_to_bool(x):
     if x == 0:
         return 'No'
     else:
         return 'Yes'
 
-@st.cache
-def age_group_data():
-    df['HeartDisease'] = df['HeartDisease'].apply(lambda x: convert_to_int(x))
-    table_1 = df[['AgeCategory', 'Sex', 'Race', 'HeartDisease']].groupby(
-        ['AgeCategory', 'Sex', 'Race']).count()
-    table_1 = table_1.rename(columns={'HeartDisease': 'total_num_people'})
-    table_2 = df[['AgeCategory', 'Sex', 'Race', 'HeartDisease']].groupby(
-        ['AgeCategory', 'Sex', 'Race']).sum()
-    table_2 = table_2.rename(columns={'HeartDisease': 'num_heart_disease'})
-    age_group = pd.merge(table_1, table_2, on=['AgeCategory', 'Sex', 'Race'])
-    age_group['percentage'] = round(age_group['num_heart_disease']/age_group['total_num_people'] * 100, 1)
-    age_group = age_group.reset_index()
+df['HeartDisease'] = df['HeartDisease'].apply(lambda x: convert_to_int(x))
+table_1 = df[['AgeCategory', 'Sex', 'Race', 'HeartDisease']].groupby(
+    ['AgeCategory', 'Sex', 'Race']).count()
+table_1 = table_1.rename(columns={'HeartDisease': 'total_num_people'})
+table_2 = df[['AgeCategory', 'Sex', 'Race', 'HeartDisease']].groupby(
+    ['AgeCategory', 'Sex', 'Race']).sum()
+table_2 = table_2.rename(columns={'HeartDisease': 'num_heart_disease'})
+age_group = pd.merge(table_1, table_2, on=['AgeCategory', 'Sex', 'Race'])
+age_group['percentage'] = round(age_group['num_heart_disease']/age_group['total_num_people'] * 100, 1)
+age_group = age_group.reset_index()
 
-    return age_group
 ####################
 ### INTRODUCTION ###
 ####################
@@ -97,9 +92,7 @@ st.text('')
 ####################
 st.subheader('Distribution of Heart Disease by Age, Gender and Race')
 
-age_group = age_group_data()
 
-@st.cache
 def age_sex_race():
     age_sex_race = alt.Chart(age_group
                 ).mark_bar(
@@ -114,7 +107,7 @@ def age_sex_race():
                 height=400)
     return age_sex_race
 
-@st.cache
+
 def native():
     native = alt.Chart(age_group
                 ).transform_filter(alt.datum.Race=='American Indian/Alaskan Native').mark_bar(
@@ -129,7 +122,7 @@ def native():
                 height=400)
     return native
 
-@st.cache
+
 def asian():
     asian = alt.Chart(age_group
                 ).transform_filter(alt.datum.Race=='Asian').mark_bar(
@@ -144,7 +137,6 @@ def asian():
                 height=400)
     return asian
 
-@st.cache
 def black():
     black = alt.Chart(age_group
                 ).transform_filter(alt.datum.Race=='Black').mark_bar(
@@ -159,7 +151,7 @@ def black():
                 height=400)
     return black
 
-@st.cache
+
 def hispanic():
     hispanic = alt.Chart(age_group
                 ).transform_filter(alt.datum.Race=='Hispanic').mark_bar(
@@ -174,7 +166,7 @@ def hispanic():
                 height=400)
     return hispanic
 
-@st.cache
+
 def other_race():
     other = alt.Chart(age_group
                 ).transform_filter(alt.datum.Race=='Other').mark_bar(
@@ -189,7 +181,7 @@ def other_race():
                 height=400)
     return other
 
-@st.cache
+
 def white():
     white = alt.Chart(age_group
                 ).transform_filter(alt.datum.Race=='White').mark_bar(
@@ -252,8 +244,7 @@ base = alt.Chart(multi_var
         height=250
         ).add_selection(selector)
 
-@st.cache
-def general_plot():
+def general_plot(allow_output_mutation=True):
     points = base.mark_point(filled=True, size=300
         ).encode(
         x=alt.X('mean(PhysicalHealth):Q',
@@ -320,7 +311,6 @@ def general_plot():
     return combined_1
 
 ##### Female Plot #####
-@st.cache
 def female_plot():
     female_points = base.mark_point(
         filled=True, size=300
@@ -395,7 +385,7 @@ def female_plot():
     return combined_2
 
 ##### Male Plot #####
-@st.cache
+
 def male_plot():
     male_points = base.mark_point(
         filled=True, size=300
@@ -511,7 +501,6 @@ other_diseases = other_diseases.reset_index()
 other_diseases = other_diseases.rename(columns={'level_0': 'other_diseases', 0: 'percentage'})
 other_diseases['HeartDisease'] = other_diseases['HeartDisease'].apply(lambda x: convert_to_bool(x))
 
-@st.cache
 def diseases():
     diseases = alt.Chart(other_diseases).mark_bar(
         cornerRadiusTopLeft=3,
@@ -536,7 +525,6 @@ def diseases():
     return diseases
 
 ##### ASTHMA #####
-@st.cache
 def asthma():
     asthma = alt.Chart(other_diseases
         ).transform_filter(
@@ -573,7 +561,6 @@ def asthma():
     return asthma_viz
 
 ##### DIABETIC #####
-@st.cache
 def diabetic():
     diabetic = alt.Chart(other_diseases
         ).transform_filter(
@@ -610,7 +597,6 @@ def diabetic():
     return diabetic_viz
 
 ##### KIDNEY #####
-@st.cache
 def kidney_disease():
     kidney_disease = alt.Chart(other_diseases
         ).transform_filter(
@@ -647,7 +633,6 @@ def kidney_disease():
     return kidney_viz
 
 ##### SKIN CANCER #####
-@st.cache
 def skin_cancer():
     skin_cancer = alt.Chart(other_diseases
         ).transform_filter(
@@ -684,7 +669,6 @@ def skin_cancer():
     return skin_viz
 
 ##### STROKE #####
-@st.cache
 def stroke():
     stroke = alt.Chart(other_diseases
         ).transform_filter(
@@ -779,7 +763,6 @@ with viz3_col2:
 ####################
 ##### Sidebar  #####
 ####################
-@st.cache
 def user_select_features():
     race = st.sidebar.selectbox("Race", options=(race for race in df['Race'].unique()))
     sex = st.sidebar.selectbox("Sex", options=(sex for sex in df['Sex'].unique()))
@@ -864,7 +847,6 @@ preprocess_pipeline = ColumnTransformer([
         ("cat", categorical_pip, categorical_attr)
     ])
 
-@st.cache
 def logit_model():
     # X_train, x_test, y_train, y_test = train_test_split(df.drop('HeartDisease',axis=1),
     #                                                     df['HeartDisease'], test_size=0.30,
