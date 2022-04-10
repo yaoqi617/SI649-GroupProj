@@ -781,7 +781,7 @@ def user_select_features():
             })
     return features
 
-st.sidebar.title("Enter Your Personal Statistics")
+st.sidebar.title("Let's predict your probability of getting heart disease")
 st.sidebar.image("images/heart_side.jpeg", width=100)
 input_df = user_select_features()
 submit = st.sidebar.button("Predict")
@@ -831,12 +831,10 @@ if submit:
     prediction = logmodel.predict(trans_input_df)
     prediction_prob = logmodel.predict_proba(trans_input_df)
     if prediction == 0:
-        st.markdown(f"**The probability that you'll have"
-                    f" heart disease is {round(prediction_prob[0][1] * 100, 2)}%."
-                    f" You are healthy!**")
+        st.markdown(st.info(f"""**The probability that you'll have heart disease is 
+        {round(prediction_prob[0][1] * 100, 2)}%. You are healthy!**"""))
     else:
-        st.markdown(f"**The probability that you will have"
-                    f" heart disease is {round(prediction_prob[0][1] * 100, 2)}%."
-                    f" It sounds like you are not healthy.**")
+        st.markdown(st.info(f"""**The probability that you will have heart disease is 
+        {round(prediction_prob[0][1] * 100, 2)}%. It sounds like you are not healthy.**"""))
 
 # pred_col1, viz3_col2 = st.columns([3, 6])
