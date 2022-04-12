@@ -1,5 +1,6 @@
 import altair as alt
 import pandas as pd
+from sklearn import preprocessing
 import streamlit as st
 from altair import datum
 
@@ -826,19 +827,9 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.preprocessing import OneHotEncoder
 import pickle
 MODEL_FILEPATH = "finalized_model.pkl"
+PIPE_FILEPATH = "pipeline.pkl"
 
-num_pip = Pipeline([
-        ("scaler", StandardScaler())
-    ])
-categorical_pip = Pipeline([("cat_encoder", OneHotEncoder(sparse=False))])
-categorical_attr = ["Smoking", "AlcoholDrinking", "Stroke", "DiffWalking", 
-            "Sex", "AgeCategory", "Race", "Diabetic", "PhysicalActivity", 
-            "GenHealth", "Asthma", "KidneyDisease", "SkinCancer"]
-num_attr = ["BMI", "PhysicalHealth", "MentalHealth", "SleepTime"]
-preprocess_pipeline = ColumnTransformer([
-        ("num", num_pip, num_attr),
-        ("cat", categorical_pip, categorical_attr)
-    ])
+preprocess_pipeline = pickle.load(open(PIPE_FILEPATH, 'rb'))
 
 logmodel = pickle.load(open(MODEL_FILEPATH, "rb"))
 
