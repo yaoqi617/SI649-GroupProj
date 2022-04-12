@@ -820,18 +820,12 @@ submit = st.sidebar.button("Predict")
 ####################
 ##### Predict  #####
 ####################
-from sklearn.model_selection import train_test_split
-from imblearn.over_sampling import SMOTE
-from sklearn.preprocessing import OneHotEncoder
-from sklearn.pipeline import Pipeline
 from sklearn.compose import ColumnTransformer
+from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
-from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import classification_report
-
-X_train, x_test, y_train, y_test = train_test_split(df.drop('HeartDisease',axis=1),
-                                                        df['HeartDisease'], test_size=0.30,
-                                                        random_state=101)
+from sklearn.preprocessing import OneHotEncoder
+import pickle
+MODEL_FILEPATH = "finalized_model.pkl"
 
 num_pip = Pipeline([
         ("scaler", StandardScaler())
@@ -841,21 +835,12 @@ categorical_attr = ["Smoking", "AlcoholDrinking", "Stroke", "DiffWalking",
             "Sex", "AgeCategory", "Race", "Diabetic", "PhysicalActivity", 
             "GenHealth", "Asthma", "KidneyDisease", "SkinCancer"]
 num_attr = ["BMI", "PhysicalHealth", "MentalHealth", "SleepTime"]
-
 preprocess_pipeline = ColumnTransformer([
         ("num", num_pip, num_attr),
         ("cat", categorical_pip, categorical_attr)
     ])
 
-X = preprocess_pipeline.fit_transform(
-    X_train[num_attr + categorical_attr])
-
-y = y_train
-
-oversample = SMOTE()
-X_oversample, y_oversample = oversample.fit_resample(X, y)
-logmodel = LogisticRegression()
-logmodel.fit(X_oversample, y_oversample)
+logmodel = pickle.load(open(MODEL_FILEPATH, "rb"))
 
 if submit:
     trans_input_df = preprocess_pipeline.transform(input_df)
