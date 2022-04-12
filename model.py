@@ -49,5 +49,8 @@ X_oversample, y_oversample = oversample.fit_resample(X, y)
 logmodel = LogisticRegression()
 logmodel.fit(X_oversample, y_oversample)
 
-filename = 'finalized_model.pkl'
-pickle.dump(logmodel, open(filename, 'wb'))
+filename_model = 'finalized_model.pkl'
+pickle.dump(logmodel, open(filename_model, 'wb'))
+
+filename_pip = 'pipeline.pkl'
+pickle.dump(preprocess_pipeline, open(filename_pip, 'wb'))
