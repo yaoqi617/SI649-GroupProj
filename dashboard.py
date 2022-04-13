@@ -33,6 +33,9 @@ age_group = pd.merge(table_1, table_2, on=['AgeCategory', 'Sex', 'Race'])
 age_group['percentage'] = round(age_group['num_heart_disease']/age_group['total_num_people'] * 100, 1)
 age_group = age_group.reset_index()
 
+table_3 = pd.read_csv("table_5.csv")
+
+
 ####################
 ### INTRODUCTION ###
 ####################
@@ -761,9 +764,102 @@ with viz3_col2:
         st.markdown(kidney_desc, unsafe_allow_html=True)
         st.write(skin_cancer())
 
+
+####################
+###### Viz 4 #######
+####################
+st.subheader('Does Smoking/Drinking habits and BMI change the risk of Heart Disease?')
+bmi_desc = """<p style="font-size: 18px;">First, let's calculate your BMI.</p>"""
+st.markdown(bmi_desc, unsafe_allow_html=True)
+userWeight = int(st.text_input('What is your weight? (lbs)', 190))
+userHeight = float(st.text_input('What is your height? (ft)', 5.6))
+ft_to_m = userHeight/3.28084
+bmi = round((userWeight/2.20462)/(ft_to_m*ft_to_m),2)
+weight_status=None
+if bmi <= 18.5 :
+    weight_status = 'underweight'
+elif 18.5<bmi<=24.9 :
+    weight_status = 'normal'
+elif 25<bmi<=29.9 :
+    weight_status = 'overweight'
+else:
+    weight_status = 'obese'
+
+bmi_str = f"""<style>p.a {{font: bold 23px Courier; color: Green;}}</style><p class="a">{bmi}</p>"""
+weight_str = f"""<style>p.a {{font: bold 23px Courier; color: Green;}}</style><p class="a">{weight_status}</p>"""
+st.write('Your BMI is : ')
+st.markdown(bmi_str, unsafe_allow_html=True)
+st.write('Based on your BMI, your weight status is : ')
+st.markdown(weight_str, unsafe_allow_html=True)
+
+bmi_labels = ['underweight', 'normal', 'overweight', 'obese']
+smdr_labels = ['smoking only', 'smoking & drinking', 'drinking only', 'none']
+
+selection=alt.selection_single(encodings=['y'], on="mouseover", clear="mouseout")
+opacity = alt.condition(selection, alt.value(1.0), alt.value(0.4))
+
+def lifestyle_viz():
+    heatmap = alt.Chart(
+        table_3, 
+        width=450, height=300, 
+        title='Percentage of Heart Disease by BMI and Smoking/Drinking'
+        ).mark_rect().encode(
+        x = alt.X("BMI label:N", sort=bmi_labels, axis=alt.Axis(labelAngle=15)),
+        y = alt.Y("smdr:N", sort=smdr_labels, title=None),
+        color = alt.Color('perc_sb:Q', scale=alt.Scale(scheme='lightmulti'), title="%"),
+        opacity=opacity
+        )
+    text = heatmap.mark_text(
+        align='center', baseline='middle'
+        ).encode(
+        text = alt.Text('perc_sb:Q', format='0.2f'),
+        color = (alt.value('black'))
+        )
+    chart1 = (heatmap +text)
+
+    bar1 = alt.Chart(
+        table_3, 
+        width=450, height=120, 
+        title='Percentage of Heart Disease by BMI range'
+        ).mark_bar().transform_joinaggregate(
+        groupby=['BMI label']
+        ).encode(
+        x = alt.X('mean(perc_b):Q', axis=alt.Axis(format="0.0%"), title=None),
+        y = alt.Y('BMI label:N', title=None, sort=['underweight', 'normal', 'overweight', 'obese']),
+        color = alt.Color('mean(perc_b):Q', scale=alt.Scale(scheme='lightmulti')),
+        tooltip = alt.Tooltip('perc_b:Q', format="0.0%"),
+        opacity = opacity
+        ).add_selection(selection)
+
+    bar2 = alt.Chart(
+        table_3, 
+        width=450, height=120, 
+        title='Percentage of Heart Disease by Smoking/Drinking'
+        ).mark_bar().transform_joinaggregate(
+        groupby=['smdr']
+        ).encode(
+        x = alt.X('mean(perc_s):Q', axis=alt.Axis(format="0.0%"), title=None),
+        y = alt.Y('smdr:N', title=None, sort=['smoking only', 'smoking & drinking', 'drinking only', 'none']),
+        color = alt.Color('mean(perc_s):Q', scale=alt.Scale(scheme='lightmulti'), legend=None),
+        tooltip = alt.Tooltip('perc_s:Q', format="0.0%"),
+        opacity = opacity
+        ).add_selection(selection)
+
+    chart2 = alt.vconcat(bar2, bar1).resolve_scale(x='shared')
+    viz4 = (chart2 | chart1).resolve_scale(color='independent')
+
+    return viz4
+
+st.write(lifestyle_viz())
+
 ####################
 ##### Sidebar  #####
 ####################
+
+st.subheader('Overall probabilty of Heart Disease based on your personal condition')
+side_desc = """<p style="font-size: 18px;">Press "predict" on the bottom of the sidebar after you select your health condition.</p>"""
+st.markdown(side_desc, unsafe_allow_html=True)
+
 def user_select_features():
     race = st.sidebar.selectbox("Race", options=(race for race in df['Race'].unique()))
     sex = st.sidebar.selectbox("Sex", options=(sex for sex in df['Sex'].unique()))
@@ -814,6 +910,7 @@ def user_select_features():
     return features
 
 st.sidebar.title("Let's predict your probability of getting heart disease")
+st.sidebar.markdown("Select conditions below and we will give you the probability")
 st.sidebar.image("images/heart_side.jpeg", width=100)
 input_df = user_select_features()
 submit = st.sidebar.button("Predict")
