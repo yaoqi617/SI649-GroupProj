@@ -57,6 +57,12 @@ with intro_col2:
 
     **Author**: Yaoqi Liao & Hojeong Yoo ([GitHub Repo](https://github.com/yaoqi617/SI649-GroupProj))
     """)
+    
+st.subheader("A quick note about privacy")
+st.markdown("""
+Streamlit open-source software does not see or store any of the data you put into any app that you develop with it.
+We also set the configuration setting as gathering usage stats is impossible.For more information, please visit https://streamlit.io/privacy-policy.
+""")
 
 ####################
 ##### Raw Data #####
@@ -792,6 +798,15 @@ st.markdown(bmi_str, unsafe_allow_html=True)
 st.write('Based on your BMI, your weight status is : ')
 st.markdown(weight_str, unsafe_allow_html=True)
 
+smoking_str = """<p style="font-size: 18px; color"Green";>Smoking is a major cause of cardiovascular disease (CVD) and causes approximately one of every four deaths from CVD, 
+    according to the 2014 Surgeon General’s Report on smoking and health. Chemicals in cigarette smoke cause the cells that line blood vessels to become swollen and inflamed. <br />
+    This can narrow the blood vessels and can lead to many cardiovascular conditions.<br />
+    <br />
+
+    </p>"""
+st.markdown(smoking_str, unsafe_allow_html=True)
+
+
 bmi_labels = ['underweight', 'normal', 'overweight', 'obese']
 smdr_labels = ['smoking only', 'smoking & drinking', 'drinking only', 'none']
 
@@ -851,6 +866,17 @@ def lifestyle_viz():
     return viz4
 
 st.write(lifestyle_viz())
+
+####################
+######Drinking######
+####################
+st.subheader('Drinking and Heart Condition?')
+drinking_comment = """<p style="font-size: 18px;">Moderate drinking -- one drink a day for women and two for men -- appears to protect some people against heart disease. <br />
+    However, Doctors are not sure if those healthy effects come from the alcohol or from other good lifestyle choices that light drinkers make. 
+    So if you don’t drink already, your heart is not a reason to start. A healthy diet and regular exercise provide many of the same good effects that are tied to alcohol.
+    </p>"""
+st.markdown(drinking_comment, unsafe_allow_html=True)
+st.markdown("""[Source: WebMD](https://www.webmd.com/heart-disease/heart-disease-alcohol-your-heart)""")
 
 ####################
 ##### Sidebar  #####
